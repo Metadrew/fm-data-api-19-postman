@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>SnoreLog - Metrics</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <style>
+        body { background-color: #000000; color: #ffffff; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
+        .glass { background: rgba(28, 28, 30, 0.7); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.1); }
+
+        input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; z-index: 20; cursor: pointer; height: 40px; }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 28px; width: 28px; border-radius: 50%; background: #0A84FF; margin-top: -12px; border: 2px solid #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.3); }
+        input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 4px; background: #3a3a3c; border-radius: 2px; }
+
+        @keyframes pulse-soft { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+        .animate-recording { animation: pulse-soft 2s infinite; }
+
+        .safe-area-top { padding-top: env(safe-area-inset-top); }
+        .safe-area-bottom { padding-bottom: env(safe-area-inset-bottom); }
+    </style>
+</head>
+<body class="safe-area-top safe-area-bottom p-4 gap-4 max-w-lg mx-auto w-full relative">
+
+    <header class="flex justify-between items-start shrink-0">
+        <div>
+            <h1 class="text-2xl font-bold bg-gradient-to-r from-blue-500 to-cyan-400 bg-clip-text text-transparent">SnoreLog</h1>
+            <div class="flex flex-col gap-0.5 mt-1">
+                <span id="status-line" class="text-[10px] font-mono text-gray-500">METRICS ENGINE READY</span>
+                <span id="session-counter" class="text-[10px] font-mono text-gray-600">0 SESSIONS</span>
+            </div>
+        </div>
+        <button onclick="window.App.toggleHistory()" class="px-3 py-1.5 rounded-full bg-gray-800 text-xs font-bold text-gray-300 border border-gray-700 active:bg-gray-700 flex items-center gap-2">
+            HISTORY <span id="session-badge" class="bg-blue-600 text-white text-[9px] px-1.5 rounded-full hidden">0</span>
+        </button>
+    </header>
+
+    <div class="glass rounded-3xl p-0.5 relative h-56 flex flex-col shrink-0 overflow-hidden shadow-2xl transition-all duration-500">
+        <canvas id="scope" class="w-full h-full bg-black rounded-2xl"></canvas>
+
+        <div id="threshold-line" class="absolute left-0 right-0 border-t-2 border-dashed border-blue-500 opacity-60 pointer-events-none transition-all duration-100" style="bottom: 30%;">
+            <span class="absolute right-2 -top-5 text-[10px] font-bold text-blue-400 bg-black/50 px-2 py-0.5 rounded">SENSITIVITY</span>
+        </div>
+
+        <div class="absolute top-4 left-4 pointer-events-none flex flex-col gap-2">
+            <div id="badge-status" class="px-3 py-1.5 rounded-lg bg-gray-800 border border-gray-700 text-[10px] font-bold text-gray-400 w-max transition-colors duration-300">
+                STANDBY
+            </div>
+            <div id="db-meter" class="hidden text-[10px] font-mono text-green-400 bg-black/50 px-2 py-1 rounded border border-green-900/50">
+                45 dB
+            </div>
+        </div>
+
+        <div id="overlay-snore" class="hidden absolute inset-0 flex flex-col items-center justify-center pointer-events-none bg-red-900/10 backdrop-blur-[1px]">
+            <div class="bg-red-600 px-6 py-3 rounded-full shadow-lg shadow-red-900/50 animate-bounce mb-2">
+                <span class="text-white font-bold tracking-widest text-sm">SNORE DETECTED</span>
+            </div>
+        </div>
+    </div>
+
+    <div id="session-panel" class="hidden glass p-4 rounded-2xl border-l-4 border-red-500 animate-recording shrink-0">
+        <div class="flex justify-between items-center mb-2">
+            <div>
+                <p class="text-xs font-bold text-red-400 uppercase tracking-wider">Session Active</p>
+                <p class="text-[10px] text-gray-400">Silence Timer: <span id="silence-timer" class="text-white font-mono">0.0s</span> / 5.0s</p>
+            </div>
+            <p id="timer-display" class="text-2xl font-mono font-medium text-white tabular-nums">0.0s</p>
+        </div>
+        <div class="grid grid-cols-3 gap-2 pt-2 border-t border-white/5">
+            <div class="text-center">
+                <p class="text-[9px] text-gray-500">PEAK VOL</p>
+                <p id="live-peak" class="text-xs font-bold text-white">- dB</p>
+            </div>
+            <div class="text-center">
+                <p class="text-[9px] text-gray-500">COUNT</p>
+                <p id="live-count" class="text-xs font-bold text-white">0</p>
+            </div>
+            <div class="text-center">
+                <p class="text-[9px] text-gray-500">LAST GAP</p>
+                <p id="live-gap" class="text-xs font-bold text-white">-</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="glass p-5 rounded-3xl shrink-0 mt-auto">
+        <div class="flex justify-between mb-4">
+            <label class="text-xs font-bold text-gray-400 uppercase">Detection Sensitivity</label>
+            <span id="sens-val" class="text-xs font-bold text-blue-400 font-mono">30%</span>
+        </div>
+
+        <div class="relative h-10 flex items-center">
+            <div class="absolute inset-x-0 h-2 bg-gray-800 rounded-full overflow-hidden">
+                <div id="meter-fill" class="h-full bg-green-500 w-0 transition-all duration-75"></div>
+            </div>
+            <input type="range" id="sensitivity" min="5" max="95" value="30" step="1">
+        </div>
+
+        <div class="flex justify-between mt-1 px-1">
+            <span class="text-[9px] text-gray-600">Strict</span>
+            <span class="text-[9px] text-gray-600">Sensitive</span>
+        </div>
+
+        <div class="mt-6 flex items-center justify-between border-t border-gray-700 pt-4">
+            <div class="flex flex-col">
+                <span class="text-xs font-bold text-gray-300">AI Analysis</span>
+                <span class="text-[10px] text-gray-500">Verify patterns with Gemini</span>
+            </div>
+            <label class="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" id="ai-toggle" class="sr-only peer" checked>
+                <div class="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+            </label>
+        </div>
+    </div>
+
+    <div class="mt-4">
+        <button id="btn-main" class="w-full py-4 rounded-2xl bg-blue-600 active:bg-blue-700 text-white font-bold text-lg shadow-lg shadow-blue-900/30 transition-transform active:scale-[0.98]">
+            Start Listening
+        </button>
+    </div>
+
+    <div id="history-modal" class="fixed inset-0 z-50 hidden bg-black flex flex-col pt-[env(safe-area-inset-top)]">
+        <div class="px-4 py-4 border-b border-gray-800 flex justify-between items-center bg-[#1c1c1e]">
+            <h2 class="text-lg font-bold text-white">History</h2>
+            <button onclick="window.App.toggleHistory()" class="p-2 bg-gray-800 rounded-full text-gray-400 hover:text-white">Close</button>
+        </div>
+        <div class="px-4 py-3 bg-[#1c1c1e] flex justify-between items-center border-b border-gray-800">
+            <span class="text-xs text-gray-500 font-bold" id="history-count">0 Records</span>
+            <button onclick="window.App.exportCSV()" class="text-xs font-bold text-blue-400 bg-blue-900/20 px-3 py-1.5 rounded border border-blue-500/30">Export CSV</button>
+        </div>
+        <div id="history-list" class="flex-grow overflow-y-auto p-4 space-y-2 bg-black pb-12">
+            <div class="text-center py-10 text-gray-600 text-sm">No events logged yet.</div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, updateDoc, doc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { GoogleGenerativeAI } from "https://esm.run/@google/generative-ai";
+
+        window.Cloud = {
+            db: null, user: null, ready: false, apiKey: "",
+            init: async () => {
+                try {
+                    if (typeof __firebase_config === 'undefined') return;
+                    const app = initializeApp(JSON.parse(__firebase_config));
+                    const auth = getAuth(app);
+                    const db = getFirestore(app);
+                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) await signInWithCustomToken(auth, __initial_auth_token);
+                    else await signInAnonymously(auth);
+                    onAuthStateChanged(auth, u => { window.Cloud.user = u; window.Cloud.db = db; window.Cloud.ready = !!u; });
+                } catch (e) {
+                    console.warn('Cloud init failed:', e);
+                }
+            },
+            verify: async (uiId, docId, img) => {
+                try {
+                    if (!window.Cloud.apiKey) {
+                        window.App.updateLogStatus(uiId, 'error');
+                        return;
+                    }
+                    window.App.updateLogStatus(uiId, 'checking');
+                    const genAI = new GoogleGenerativeAI(window.Cloud.apiKey);
+                    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-preview-09-2025" });
+
+                    const prompt = `Analyze snore session.
+                    Context: Audio visualizer.
+                    Input: Spectrogram image.
+                    Task: Provide sleep expert analysis.
+                    Output JSON: {
+                        "isSnore": boolean,
+                        "confidence": number,
+                        "type": "string",
+                        "severity": "string",
+                        "insight": "string"
+                    }`;
+
+                    const res = await model.generateContent([
+                        { inlineData: { data: img.split(',')[1], mimeType: "image/jpeg" } },
+                        { text: prompt }
+                    ]);
+
+                    const raw = res.response.text().replace(/```json|```/g, '').trim();
+                    const json = JSON.parse(raw);
+                    window.App.updateLogStatus(uiId, 'done', json);
+
+                    if (window.Cloud.ready && docId) {
+                        await updateDoc(doc(window.Cloud.db, 'artifacts', 'snore-expert-v2', 'users', window.Cloud.user.uid, 'logs', docId), { aiData: json });
+                    }
+                } catch (e) {
+                    console.warn('AI verify failed:', e);
+                    window.App.updateLogStatus(uiId, 'error');
+                }
+            },
+            save: async (data) => {
+                if (window.Cloud.ready) return await addDoc(collection(window.Cloud.db, 'artifacts', 'snore-expert-v2', 'users', window.Cloud.user.uid, 'logs'), data);
+                return { id: 'loc-' + Date.now() };
+            }
+        };
+        window.Cloud.init();
+    </script>
+
+    <script>
+        window.App = {
+            ctx: null, analyser: null, mic: null, stream: null, raf: null, isRunning: false,
+            threshold: 30,
+            isRecording: false,
+            sessionStart: 0,
+            lastSoundTime: 0,
+            potentialStart: 0,
+            pulseCount: 0,
+            peakDb: 0,
+            breaths: [],
+            currentBreath: null,
+            tempSnapshot: null,
+            logs: [],
+
+            init: () => {
+                document.getElementById('btn-main').onclick = window.App.toggle;
+                document.getElementById('sensitivity').oninput = window.App.updateThreshold;
+                window.addEventListener('resize', window.App.resizeCanvas);
+                window.App.updateThreshold();
+                window.App.resizeCanvas();
+            },
+
+            resizeCanvas: () => {
+                const cvs = document.getElementById('scope');
+                cvs.width = cvs.parentElement.offsetWidth;
+                cvs.height = cvs.parentElement.offsetHeight;
+            },
+
+            getLogById: (id) => window.App.logs.find((log) => log.id === id),
+
+            replaceLogId: (oldId, newId) => {
+                const log = window.App.getLogById(oldId);
+                if (!log) return;
+                log.id = newId;
+                const item = document.getElementById(`log-${oldId}`);
+                if (item) item.id = `log-${newId}`;
+            },
+
+            updateThreshold: () => {
+                const val = document.getElementById('sensitivity').value;
+                window.App.threshold = parseInt(val, 10);
+                document.getElementById('sens-val').textContent = val + "%";
+                document.getElementById('threshold-line').style.bottom = val + "%";
+            },
+
+            toggle: async () => {
+                if (window.App.isRunning) window.App.stop();
+                else await window.App.start();
+            },
+
+            start: async () => {
+                const btn = document.getElementById('btn-main');
+                btn.textContent = "Starting...";
+                btn.disabled = true;
+
+                try {
+                    if (!window.App.ctx) window.App.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                    if (window.App.ctx.state === 'suspended') await window.App.ctx.resume();
+
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
+                    window.App.stream = stream;
+                    window.App.analyser = window.App.ctx.createAnalyser();
+                    window.App.analyser.fftSize = 256;
+                    window.App.analyser.smoothingTimeConstant = 0.3;
+                    window.App.mic = window.App.ctx.createMediaStreamSource(stream);
+                    window.App.mic.connect(window.App.analyser);
+
+                    window.App.isRunning = true;
+                    window.App.loop();
+
+                    btn.textContent = "Stop Monitoring";
+                    btn.className = "w-full py-4 rounded-2xl bg-red-600 active:bg-red-700 text-white font-bold text-lg shadow-lg shadow-red-900/30 transition-transform active:scale-[0.98]";
+
+                    document.getElementById('badge-status').textContent = "LISTENING";
+                    document.getElementById('badge-status').className = "px-3 py-1.5 rounded-lg bg-green-900/40 border border-green-500/30 text-[10px] font-bold text-green-400 animate-pulse backdrop-blur";
+                    document.getElementById('db-meter').classList.remove('hidden');
+                } catch (e) {
+                    alert("Error: " + e.message);
+                } finally {
+                    btn.disabled = false;
+                }
+            },
+
+            stop: () => {
+                window.App.isRunning = false;
+                if (window.App.isRecording) window.App.endSession();
+                cancelAnimationFrame(window.App.raf);
+
+                if (window.App.mic) window.App.mic.disconnect();
+                if (window.App.stream) {
+                    window.App.stream.getTracks().forEach((track) => track.stop());
+                    window.App.stream = null;
+                }
+
+                const btn = document.getElementById('btn-main');
+                btn.textContent = "Start Listening";
+                btn.className = "w-full py-4 rounded-2xl bg-blue-600 active:bg-blue-700 text-white font-bold text-lg shadow-lg shadow-blue-900/30 transition-transform active:scale-[0.98]";
+
+                document.getElementById('badge-status').textContent = "IDLE";
+                document.getElementById('badge-status').className = "px-3 py-1.5 rounded-lg bg-gray-800 border border-gray-700 text-[10px] font-bold text-gray-400";
+                document.getElementById('meter-fill').style.width = '0%';
+                document.getElementById('db-meter').classList.add('hidden');
+            },
+
+            loop: () => {
+                if (!window.App.isRunning) return;
+
+                const analyser = window.App.analyser;
+                const bufferLen = analyser.frequencyBinCount;
+                const data = new Uint8Array(bufferLen);
+                analyser.getByteFrequencyData(data);
+
+                let sum = 0;
+                for (let i = 0; i < 15; i++) sum += data[i];
+
+                const level = Math.min(100, (sum / 15 / 255) * 100 * 3.0);
+                const rms = Math.max(1, sum / 15);
+                const db = Math.round(20 * Math.log10(rms / 255) + 90);
+                document.getElementById('db-meter').textContent = `${db} dB`;
+
+                const meter = document.getElementById('meter-fill');
+                meter.style.width = level + "%";
+
+                const isLoud = level > window.App.threshold;
+                const now = Date.now();
+
+                if (window.App.isRecording) {
+                    if (isLoud) {
+                        if (!window.App.currentBreath) {
+                            window.App.currentBreath = { start: now, maxLevel: db };
+                        } else {
+                            window.App.currentBreath.maxLevel = Math.max(window.App.currentBreath.maxLevel, db);
+                        }
+                    } else if (window.App.currentBreath) {
+                        window.App.currentBreath.end = now;
+                        window.App.breaths.push(window.App.currentBreath);
+                        window.App.currentBreath = null;
+                        window.App.pulseCount++;
+                        window.App.updateLiveStats();
+                    }
+
+                    window.App.peakDb = Math.max(window.App.peakDb, db);
+                }
+
+                if (isLoud) {
+                    meter.className = "h-full bg-red-500 w-0 transition-all duration-75";
+                    window.App.handleSound(now);
+                } else {
+                    meter.className = "h-full bg-green-500 w-0 transition-all duration-75";
+                    window.App.handleSilence(now);
+                }
+
+                window.App.draw(data);
+                window.App.raf = requestAnimationFrame(window.App.loop);
+            },
+
+            updateLiveStats: () => {
+                document.getElementById('live-count').textContent = window.App.pulseCount;
+                document.getElementById('live-peak').textContent = window.App.peakDb + " dB";
+
+                if (window.App.breaths.length > 1) {
+                    const last = window.App.breaths[window.App.breaths.length - 1];
+                    const prev = window.App.breaths[window.App.breaths.length - 2];
+                    const interval = (last.start - prev.end) / 1000;
+                    document.getElementById('live-gap').textContent = interval.toFixed(1) + "s";
+                }
+            },
+
+            handleSound: (now) => {
+                if (window.App.potentialStart === 0) {
+                    window.App.potentialStart = now;
+                } else if (now - window.App.potentialStart > 500) {
+                    window.App.lastSoundTime = now;
+
+                    if (!window.App.isRecording) {
+                        window.App.startSession(now);
+                    } else {
+                        const dur = ((now - window.App.sessionStart) / 1000).toFixed(1);
+                        document.getElementById('timer-display').textContent = dur + 's';
+                        document.getElementById('silence-timer').textContent = "0.0s";
+                    }
+                }
+            },
+
+            handleSilence: (now) => {
+                if (window.App.potentialStart > 0 && !window.App.isRecording && now - window.App.potentialStart < 500) {
+                    window.App.potentialStart = 0;
+                }
+
+                if (window.App.isRecording) {
+                    const silenceDur = (now - window.App.lastSoundTime) / 1000;
+                    document.getElementById('silence-timer').textContent = silenceDur.toFixed(1) + 's';
+
+                    if (now - window.App.lastSoundTime > 5000) {
+                        window.App.endSession();
+                    }
+                } else {
+                    document.getElementById('overlay-snore').classList.add('hidden');
+                }
+            },
+
+            startSession: (now) => {
+                window.App.isRecording = true;
+                window.App.sessionStart = window.App.potentialStart;
+
+                window.App.pulseCount = 0;
+                window.App.peakDb = 0;
+                window.App.breaths = [];
+                window.App.currentBreath = null;
+                window.App.updateLiveStats();
+
+                document.getElementById('session-panel').classList.remove('hidden');
+                document.getElementById('overlay-snore').classList.remove('hidden');
+
+                const cvs = document.getElementById('scope');
+                window.App.tempSnapshot = cvs.toDataURL('image/jpeg', 0.5);
+            },
+
+            endSession: async () => {
+                window.App.isRecording = false;
+                window.App.potentialStart = 0;
+                document.getElementById('session-panel').classList.add('hidden');
+                document.getElementById('overlay-snore').classList.add('hidden');
+
+                const dur = window.App.lastSoundTime - window.App.sessionStart;
+                if (dur <= 500) return;
+
+                let totalBreathTime = 0;
+                let totalInterval = 0;
+                let intervalCount = 0;
+
+                if (window.App.breaths.length > 0) {
+                    window.App.breaths.forEach((b) => totalBreathTime += (b.end - b.start));
+                    for (let i = 1; i < window.App.breaths.length; i++) {
+                        totalInterval += (window.App.breaths[i].start - window.App.breaths[i - 1].end);
+                        intervalCount++;
+                    }
+                }
+
+                const avgSnoreLen = window.App.breaths.length ? (totalBreathTime / window.App.breaths.length / 1000).toFixed(1) : "0.0";
+                const avgInterval = intervalCount ? (totalInterval / intervalCount / 1000).toFixed(1) : "0.0";
+
+                const log = {
+                    id: 'temp-' + Date.now(),
+                    date: new Date().toLocaleDateString(),
+                    startTime: new Date(window.App.sessionStart).toLocaleTimeString(),
+                    endTime: new Date(window.App.lastSoundTime).toLocaleTimeString(),
+                    timestamp: new Date().toISOString(),
+                    duration: dur,
+                    peakDb: window.App.peakDb,
+                    snoreCount: window.App.pulseCount,
+                    avgSnoreLen,
+                    avgInterval,
+                    snapshot: window.App.tempSnapshot,
+                    aiChecked: false
+                };
+
+                window.App.logs.push(log);
+                window.App.addHistoryItem(log);
+
+                if (window.Cloud) {
+                    const oldId = log.id;
+                    const ref = await window.Cloud.save(log);
+                    if (ref?.id) {
+                        window.App.replaceLogId(oldId, ref.id);
+                    }
+                    if (document.getElementById('ai-toggle').checked) {
+                        window.Cloud.verify(ref?.id || oldId, ref?.id || null, window.App.tempSnapshot);
+                    }
+                }
+            },
+
+            draw: (data) => {
+                const cvs = document.getElementById('scope');
+                const ctx = cvs.getContext('2d');
+                const w = cvs.width;
+                const h = cvs.height;
+
+                ctx.drawImage(cvs, -2, 0);
+                ctx.fillStyle = '#000000';
+                ctx.fillRect(w - 2, 0, 2, h);
+
+                const bins = data.length;
+                for (let i = 0; i < bins / 2; i++) {
+                    const val = data[i];
+                    const p = val / 255;
+                    if (p > 0.1) {
+                        const color = window.App.isRecording ? 'rgb(239, 68, 68)' : `rgb(${p * 50}, ${p * 50 + 50}, ${150 + p * 100})`;
+                        ctx.fillStyle = color;
+                        const y = h - (i / (bins / 2)) * h;
+                        const pixelH = h / (bins / 2) + 1;
+                        ctx.fillRect(w - 2, y, 2, pixelH);
+                    }
+                }
+            },
+
+            toggleHistory: () => document.getElementById('history-modal').classList.toggle('hidden'),
+
+            addHistoryItem: (log) => {
+                const list = document.getElementById('history-list');
+                if (list.innerText.includes('No events')) list.innerHTML = '';
+
+                const div = document.createElement('div');
+                div.id = `log-${log.id}`;
+                div.className = "bg-[#1c1c1e] p-4 rounded-xl border border-gray-800 space-y-3 mb-3";
+                div.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <div class="flex items-center gap-3">
+                            <img src="${log.snapshot}" class="w-12 h-12 rounded-lg bg-black object-cover opacity-80 border border-gray-700">
+                            <div>
+                                <div class="text-sm font-bold text-white">${log.startTime} - ${log.endTime}</div>
+                                <div class="text-xs text-gray-400 mt-1">${(log.duration / 1000).toFixed(1)}s total • ${log.peakDb} dB Peak</div>
+                            </div>
+                        </div>
+                        <div class="status-pill text-[9px] font-bold px-3 py-1.5 rounded-full bg-indigo-900/30 text-indigo-300 border border-indigo-500/30">AI PENDING</div>
+                    </div>
+                    <div class="flex gap-2 text-[10px] text-gray-500 border-t border-gray-800 pt-2">
+                         <span>Count: <span class="text-gray-300">${log.snoreCount}</span></span> •
+                         <span>Avg Len: <span class="text-gray-300">${log.avgSnoreLen}s</span></span> •
+                         <span>Interval: <span class="text-gray-300">${log.avgInterval}s</span></span>
+                    </div>
+                    <div class="ai-insight hidden bg-gray-800/50 p-3 rounded-lg border border-gray-700/50 text-[11px] text-gray-300 leading-relaxed"></div>
+                `;
+                list.prepend(div);
+
+                const count = window.App.logs.length;
+                document.getElementById('session-counter').textContent = `${count} SESSIONS`;
+                document.getElementById('history-count').textContent = `${count} Records`;
+                document.getElementById('session-badge').innerText = count;
+                document.getElementById('session-badge').classList.remove('hidden');
+            },
+
+            updateLogStatus: (id, status, data) => {
+                const el = document.getElementById(`log-${id}`);
+                if (!el) return;
+
+                const pill = el.querySelector('.status-pill');
+                const insightBox = el.querySelector('.ai-insight');
+
+                if (status === 'checking') {
+                    pill.innerHTML = `<span class="animate-spin inline-block w-2 h-2 border border-current border-t-transparent rounded-full mr-1"></span> ANALYZING`;
+                    return;
+                }
+
+                if (status === 'done' && data) {
+                    const log = window.App.getLogById(id);
+                    if (log) log.aiData = data;
+
+                    if (data.isSnore) {
+                        let badgeColor = "bg-green-900/30 text-green-400 border-green-500/30";
+                        if (data.severity === "Severe") badgeColor = "bg-red-900/30 text-red-400 border-red-500/30";
+
+                        pill.innerHTML = `✔ ${String(data.type || 'Snore').toUpperCase()}`;
+                        pill.className = `status-pill text-[9px] font-bold px-3 py-1.5 rounded-full border ${badgeColor}`;
+
+                        insightBox.innerHTML = `<strong class="text-white block mb-1">Expert Insight:</strong> ${data.insight || 'No insight provided.'} <br><span class="text-gray-500 mt-1 block">Confidence: ${data.confidence ?? '-'}%</span>`;
+                        insightBox.classList.remove('hidden');
+                    } else {
+                        pill.innerHTML = "✖ NOISE DETECTED";
+                        pill.className = "status-pill text-[9px] font-bold px-3 py-1.5 rounded-full bg-gray-700 text-gray-400 border border-gray-600";
+                    }
+                    return;
+                }
+
+                if (status === 'error') {
+                    pill.innerHTML = '⚠ AI CHECK FAILED';
+                    pill.className = 'status-pill text-[9px] font-bold px-3 py-1.5 rounded-full bg-yellow-900/30 text-yellow-300 border border-yellow-600/30';
+                }
+            },
+
+            exportCSV: () => {
+                if (window.App.logs.length === 0) return alert("No data.");
+                let csv = "Date,Start Time,End Time,Total Duration (s),Peak Volume (dB),Snore Count,Avg Snore Length (s),Avg Interval (s),AI Verdict,AI Severity,AI Insight\n";
+                window.App.logs.forEach((l) => {
+                    let type = "Pending", sev = "-", ins = "-";
+                    if (l.aiData) {
+                        type = l.aiData.isSnore ? l.aiData.type : "Noise";
+                        sev = l.aiData.severity || "-";
+                        ins = (l.aiData.insight || "").replace(/,/g, " ");
+                    }
+                    csv += `${l.date},${l.startTime},${l.endTime},${(l.duration / 1000).toFixed(2)},${l.peakDb},${l.snoreCount},${l.avgSnoreLen},${l.avgInterval},${type},${sev},${ins}\n`;
+                });
+                const blob = new Blob([csv], { type: 'text/csv' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'SnoreData.csv';
+                a.click();
+            }
+        };
+
+        document.addEventListener('DOMContentLoaded', window.App.init);
+    </script>
+</body>
+</html>
