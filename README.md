@@ -39,3 +39,33 @@ The recommended way to install it is through [Developer.ft.com](https://develope
 ## Use the collection
 
 Don't forget to replace {options} variables by your required options.
+
+## Bonus: No-code Tailwind Website Builder
+
+This repository now includes a Wix-style no-code website builder located at `builder/index.html`.
+
+### What it does
+- Drag-and-drop prebuilt sections (hero, text, CTA button, feature cards).
+- Edit content and Tailwind CSS classes directly from an inspector panel.
+- Reorder sections by dragging them in the canvas.
+- Duplicate or remove blocks.
+- Choose a JavaScript runtime style for exported sites (`Alpine.js`, `Vue 3`, or `Vanilla JS`).
+- Export a deployable `site-export.html` file that can be hosted on any standard web server.
+
+### Run locally
+From repository root:
+
+```bash
+python3 -m http.server 4173
+```
+
+Then open:
+
+- `http://localhost:4173/builder/`
+
+### Hosting exported sites
+The exported HTML file is static and can be hosted on:
+- Nginx / Apache
+- GitHub Pages
+- Netlify / Vercel static hosting
+- Any CDN or object storage static website hosting
