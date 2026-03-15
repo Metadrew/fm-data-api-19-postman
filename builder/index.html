@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tailwind No-Code Site Builder</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .canvas-empty::before {
+      content: "Drag components here";
+      display: block;
+      text-align: center;
+      color: #64748b;
+      padding: 4rem 0;
+      border: 2px dashed #cbd5e1;
+      border-radius: 0.75rem;
+    }
+    .drag-over { outline: 2px solid #6366f1; outline-offset: 2px; }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-900 min-h-screen">
+  <header class="bg-slate-900 text-white px-6 py-4 flex flex-wrap gap-3 justify-between items-center shadow">
+    <div>
+      <h1 class="text-xl font-bold">Wix-Style No-Code Site Builder</h1>
+      <p class="text-sm text-slate-300">Drag, edit, and export deployable static websites.</p>
+    </div>
+    <div class="flex gap-2">
+      <button id="save-btn" class="px-3 py-2 rounded bg-slate-700 hover:bg-slate-600">Save Draft</button>
+      <button id="clear-btn" class="px-3 py-2 rounded bg-slate-700 hover:bg-slate-600">Clear</button>
+      <button id="export-btn" class="px-3 py-2 rounded bg-indigo-600 hover:bg-indigo-500">Export Site</button>
+    </div>
+  </header>
+
+  <main class="grid lg:grid-cols-[290px_1fr_340px] gap-4 p-4">
+    <aside class="bg-white rounded-xl shadow p-4">
+      <h2 class="font-semibold mb-3">Components</h2>
+      <p class="text-sm text-slate-500 mb-3">Drag blocks into canvas.</p>
+      <div id="palette" class="space-y-2"></div>
+    </aside>
+
+    <section class="bg-white rounded-xl shadow p-4 min-h-[640px]">
+      <div class="flex justify-between items-center mb-3">
+        <h2 class="font-semibold">Canvas</h2>
+        <span class="text-sm text-slate-500">Framework: <strong id="framework-label">Alpine.js</strong></span>
+      </div>
+      <div id="canvas" class="min-h-[560px] p-2 space-y-3 canvas-empty"></div>
+    </section>
+
+    <aside class="bg-white rounded-xl shadow p-4">
+      <h2 class="font-semibold mb-3">Inspector</h2>
+      <div id="empty-inspector" class="text-sm text-slate-500">Select an element in the canvas to edit content and Tailwind classes.</div>
+      <div id="inspector" class="hidden">
+        <label class="block text-sm font-medium mb-1">Label</label>
+        <input id="field-label" class="w-full border rounded px-2 py-2 mb-3" />
+
+        <label class="block text-sm font-medium mb-1">Content</label>
+        <textarea id="field-content" rows="4" class="w-full border rounded px-2 py-2 mb-3"></textarea>
+
+        <label class="block text-sm font-medium mb-1">Link (buttons)</label>
+        <input id="field-href" class="w-full border rounded px-2 py-2 mb-3" placeholder="/about" />
+
+        <label class="block text-sm font-medium mb-1">Tailwind Classes</label>
+        <textarea id="field-classes" rows="5" class="w-full border rounded px-2 py-2 mb-3"></textarea>
+
+        <button id="remove-btn" class="w-full py-2 rounded bg-red-600 text-white hover:bg-red-500">Remove Element</button>
+      </div>
+
+      <hr class="my-4" />
+      <label class="block text-sm font-medium mb-1">JavaScript Framework</label>
+      <select id="framework" class="w-full border rounded px-2 py-2 text-sm">
+        <option>Alpine.js</option>
+        <option>Vue 3</option>
+        <option>Vanilla JS</option>
+      </select>
+      <p class="text-xs text-slate-500 mt-2">This injects starter JavaScript in exported HTML.</p>
+    </aside>
+  </main>
+
+  <script>
+    const templates = [
+      { type: 'hero', label: 'Hero Section', classes: 'py-16 px-8 bg-indigo-600 text-white rounded-xl', content: 'Build and launch beautiful pages faster.' },
+      { type: 'text', label: 'Text Block', classes: 'text-slate-700 text-lg leading-relaxed', content: 'Add meaningful content to tell your story.' },
+      { type: 'button', label: 'CTA Button', classes: 'inline-block px-5 py-3 bg-slate-900 text-white rounded-lg font-semibold', content: 'Get Started', href: '#' },
+      { type: 'cards', label: 'Feature Cards', classes: 'grid sm:grid-cols-2 lg:grid-cols-3 gap-4', content: 'Fast setup|Tailwind styling|Export ready' }
+    ];
+
+    const state = {
+      framework: 'Alpine.js',
+      elements: [],
+      selectedId: null,
+      draggingId: null
+    };
+
+    const el = (id) => document.getElementById(id);
+    const uid = () => crypto.randomUUID?.() || Math.random().toString(36).slice(2, 10);
+    const escapeHTML = (str = '') => str.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
+
+    function saveDraft() {
+      localStorage.setItem('builder-draft-v2', JSON.stringify({ framework: state.framework, elements: state.elements }));
+    }
+
+    function loadDraft() {
+      const raw = localStorage.getItem('builder-draft-v2');
+      if (!raw) return;
+      try {
+        const parsed = JSON.parse(raw);
+        state.framework = parsed.framework || state.framework;
+        state.elements = Array.isArray(parsed.elements) ? parsed.elements : [];
+      } catch (_) {}
+    }
+
+    function renderPalette() {
+      const palette = el('palette');
+      palette.innerHTML = '';
+      templates.forEach((tpl, index) => {
+        const card = document.createElement('div');
+        card.className = 'cursor-grab border rounded-lg px-3 py-2 text-sm bg-slate-50 hover:bg-slate-100';
+        card.draggable = true;
+        card.dataset.templateIndex = index;
+        card.innerHTML = `<p class="font-medium">${tpl.label}</p><p class="text-xs text-slate-500 truncate">${tpl.classes}</p>`;
+        card.addEventListener('dragstart', (ev) => {
+          ev.dataTransfer.setData('text/template-index', String(index));
+          ev.dataTransfer.effectAllowed = 'copy';
+        });
+        palette.appendChild(card);
+      });
+    }
+
+    function renderElementPreview(item) {
+      if (item.type === 'hero') return `<section class="${item.classes}"><h1 class="text-4xl font-bold mb-2">${escapeHTML(item.label)}</h1><p>${escapeHTML(item.content)}</p></section>`;
+      if (item.type === 'text') return `<p class="${item.classes}">${escapeHTML(item.content)}</p>`;
+      if (item.type === 'button') return `<a href="${escapeHTML(item.href || '#')}" class="${item.classes}">${escapeHTML(item.content)}</a>`;
+      if (item.type === 'cards') {
+        const cards = String(item.content || '').split('|').map((c) => `<article class="p-4 rounded-xl bg-slate-100"><h3 class="font-semibold">${escapeHTML(c.trim())}</h3></article>`).join('');
+        return `<section class="${item.classes}">${cards}</section>`;
+      }
+      return `<div class="${item.classes}">${escapeHTML(item.content)}</div>`;
+    }
+
+    function renderCanvas() {
+      const canvas = el('canvas');
+      canvas.classList.toggle('canvas-empty', state.elements.length === 0);
+      canvas.innerHTML = '';
+
+      state.elements.forEach((item) => {
+        const wrap = document.createElement('div');
+        wrap.className = `group relative border rounded-lg p-2 cursor-pointer ${state.selectedId === item.id ? 'border-indigo-500 ring-2 ring-indigo-200' : 'border-transparent hover:border-slate-200'}`;
+        wrap.dataset.elementId = item.id;
+        wrap.draggable = true;
+        wrap.innerHTML = `
+          <div class="absolute top-1 right-1 flex gap-1 opacity-0 group-hover:opacity-100 transition">
+            <button data-action="duplicate" class="bg-slate-900 text-white text-xs rounded px-2 py-1">Duplicate</button>
+          </div>
+          <div class="absolute top-1 left-1 text-xs text-slate-400">↕</div>
+          <div class="pt-5">${renderElementPreview(item)}</div>
+        `;
+
+        wrap.addEventListener('click', () => {
+          state.selectedId = item.id;
+          renderCanvas();
+          renderInspector();
+        });
+
+        wrap.addEventListener('dragstart', (ev) => {
+          state.draggingId = item.id;
+          ev.dataTransfer.setData('text/element-id', item.id);
+          ev.dataTransfer.effectAllowed = 'move';
+        });
+
+        wrap.addEventListener('dragover', (ev) => {
+          ev.preventDefault();
+          wrap.classList.add('drag-over');
+        });
+
+        wrap.addEventListener('dragleave', () => wrap.classList.remove('drag-over'));
+
+        wrap.addEventListener('drop', (ev) => {
+          ev.preventDefault();
+          wrap.classList.remove('drag-over');
+          const draggedId = ev.dataTransfer.getData('text/element-id');
+          if (!draggedId || draggedId === item.id) return;
+          const from = state.elements.findIndex((x) => x.id === draggedId);
+          const to = state.elements.findIndex((x) => x.id === item.id);
+          if (from < 0 || to < 0) return;
+          const [moved] = state.elements.splice(from, 1);
+          state.elements.splice(to, 0, moved);
+          saveDraft();
+          renderCanvas();
+        });
+
+        wrap.querySelector('[data-action="duplicate"]').addEventListener('click', (ev) => {
+          ev.stopPropagation();
+          const idx = state.elements.findIndex((x) => x.id === item.id);
+          const copy = { ...item, id: uid(), label: `${item.label} Copy` };
+          state.elements.splice(idx + 1, 0, copy);
+          state.selectedId = copy.id;
+          saveDraft();
+          renderCanvas();
+          renderInspector();
+        });
+
+        canvas.appendChild(wrap);
+      });
+    }
+
+    function renderInspector() {
+      const selected = state.elements.find((x) => x.id === state.selectedId);
+      el('inspector').classList.toggle('hidden', !selected);
+      el('empty-inspector').classList.toggle('hidden', !!selected);
+      if (!selected) return;
+      el('field-label').value = selected.label || '';
+      el('field-content').value = selected.content || '';
+      el('field-href').value = selected.href || '';
+      el('field-classes').value = selected.classes || '';
+    }
+
+    function addBlockFromTemplate(index) {
+      const tpl = templates[index];
+      if (!tpl) return;
+      const block = {
+        id: uid(),
+        type: tpl.type,
+        label: tpl.label,
+        content: tpl.content,
+        href: tpl.href || '#',
+        classes: tpl.classes
+      };
+      state.elements.push(block);
+      state.selectedId = block.id;
+      saveDraft();
+      renderCanvas();
+      renderInspector();
+    }
+
+    function exportSite() {
+      const htmlBlocks = state.elements.map(renderElementPreview).join('\n    ');
+      const frameworkScript = {
+        'Alpine.js': '<script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"><\/script>',
+        'Vue 3': '<script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"><\/script>\n  <script>Vue.createApp({}).mount("#app");<\/script>',
+        'Vanilla JS': '<script>console.log("Site ready");<\/script>'
+      }[state.framework];
+
+      const output = `<!doctype html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Exported Site</title>
+  <script src="https://cdn.tailwindcss.com"><\/script>
+  ${frameworkScript}
+</head>
+<body class="bg-white text-slate-900">
+  <main id="app" class="max-w-6xl mx-auto p-6 space-y-5">
+    ${htmlBlocks || '<p class="text-slate-500">No content added yet.</p>'}
+  </main>
+</body>
+</html>`;
+
+      const blob = new Blob([output], { type: 'text/html' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'site-export.html';
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function wireEvents() {
+      el('framework').addEventListener('change', (ev) => {
+        state.framework = ev.target.value;
+        el('framework-label').textContent = state.framework;
+        saveDraft();
+      });
+
+      ['label', 'content', 'href', 'classes'].forEach((field) => {
+        el(`field-${field}`).addEventListener('input', (ev) => {
+          const selected = state.elements.find((x) => x.id === state.selectedId);
+          if (!selected) return;
+          selected[field] = ev.target.value;
+          saveDraft();
+          renderCanvas();
+        });
+      });
+
+      el('remove-btn').addEventListener('click', () => {
+        state.elements = state.elements.filter((x) => x.id !== state.selectedId);
+        state.selectedId = null;
+        saveDraft();
+        renderCanvas();
+        renderInspector();
+      });
+
+      el('clear-btn').addEventListener('click', () => {
+        state.elements = [];
+        state.selectedId = null;
+        saveDraft();
+        renderCanvas();
+        renderInspector();
+      });
+
+      el('save-btn').addEventListener('click', saveDraft);
+      el('export-btn').addEventListener('click', exportSite);
+
+      const canvas = el('canvas');
+      canvas.addEventListener('dragover', (ev) => {
+        ev.preventDefault();
+      });
+
+      canvas.addEventListener('drop', (ev) => {
+        ev.preventDefault();
+        const templateIndex = ev.dataTransfer.getData('text/template-index');
+        if (templateIndex !== '') {
+          addBlockFromTemplate(Number(templateIndex));
+        }
+      });
+    }
+
+    loadDraft();
+    renderPalette();
+    wireEvents();
+    el('framework').value = state.framework;
+    el('framework-label').textContent = state.framework;
+    renderCanvas();
+    renderInspector();
+  </script>
+</body>
+</html>
