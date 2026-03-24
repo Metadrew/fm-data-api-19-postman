@@ -39,3 +39,29 @@ The recommended way to install it is through [Developer.ft.com](https://develope
 ## Use the collection
 
 Don't forget to replace {options} variables by your required options.
+
+## Openclaw dashboard (example)
+
+A lightweight dashboard is included at `openclaw-dashboard/index.html` so you can quickly view:
+
+- current Openclaw service status
+- tasks that are currently in process
+
+### Run locally
+
+From the repository root:
+
+```bash
+python3 -m http.server 8080
+```
+
+Then open:
+
+- http://localhost:8080/openclaw-dashboard/
+
+By default, the page calls:
+
+- `GET /api/openclaw/status`
+- `GET /api/openclaw/tasks?state=in_process`
+
+Use the **API base URL** field in the dashboard to point to your Openclaw API.

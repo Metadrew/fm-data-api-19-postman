@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Openclaw Dashboard</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header>
+      <h1>Openclaw Dashboard</h1>
+      <p class="subtitle">Current status and in-process tasks</p>
+    </header>
+
+    <main>
+      <section class="panel controls">
+        <label for="apiBase">API base URL</label>
+        <input id="apiBase" type="url" value="http://localhost:3000" />
+        <button id="refreshBtn" type="button">Refresh now</button>
+        <label class="inline-checkbox">
+          <input id="autoRefresh" type="checkbox" checked />
+          Auto refresh every 15s
+        </label>
+      </section>
+
+      <section class="grid">
+        <article class="panel">
+          <h2>Service status</h2>
+          <div id="serviceStatus" class="status loading">Loading…</div>
+          <dl id="serviceMeta" class="meta"></dl>
+        </article>
+
+        <article class="panel">
+          <h2>Tasks in process</h2>
+          <p id="taskSummary" class="summary">Loading tasks…</p>
+          <ul id="taskList" class="task-list"></ul>
+        </article>
+      </section>
+    </main>
+
+    <template id="taskItemTemplate">
+      <li class="task-item">
+        <div class="task-title"></div>
+        <div class="task-progress"></div>
+        <div class="task-meta"></div>
+      </li>
+    </template>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
