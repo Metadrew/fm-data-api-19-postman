@@ -1,0 +1,157 @@
+:root {
+  --bg: #0f172a;
+  --panel: #111827;
+  --text: #e5e7eb;
+  --muted: #9ca3af;
+  --green: #10b981;
+  --yellow: #f59e0b;
+  --red: #ef4444;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  background: linear-gradient(160deg, #020617 0%, #0f172a 100%);
+  color: var(--text);
+  min-height: 100vh;
+}
+
+header,
+main {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+h1,
+h2 {
+  margin: 0 0 0.5rem;
+}
+
+.subtitle {
+  margin: 0;
+  color: var(--muted);
+}
+
+.panel {
+  background: color-mix(in srgb, var(--panel), transparent 15%);
+  border: 1px solid #1f2937;
+  border-radius: 12px;
+  padding: 1rem;
+}
+
+.controls {
+  display: grid;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+input[type='url'] {
+  width: 100%;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  padding: 0.55rem;
+  background: #0b1220;
+  color: var(--text);
+}
+
+button {
+  width: fit-content;
+  border: 0;
+  border-radius: 8px;
+  padding: 0.55rem 0.8rem;
+  background: #2563eb;
+  color: #fff;
+  cursor: pointer;
+}
+
+.grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+.status {
+  display: inline-block;
+  border-radius: 999px;
+  padding: 0.2rem 0.7rem;
+  font-weight: 600;
+  margin-bottom: 0.8rem;
+}
+
+.status.ok {
+  background: color-mix(in srgb, var(--green), black 65%);
+  color: #a7f3d0;
+}
+
+.status.degraded {
+  background: color-mix(in srgb, var(--yellow), black 65%);
+  color: #fde68a;
+}
+
+.status.down {
+  background: color-mix(in srgb, var(--red), black 65%);
+  color: #fecaca;
+}
+
+.status.loading {
+  background: #1f2937;
+  color: var(--muted);
+}
+
+.meta {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.45rem 0.6rem;
+  margin: 0;
+}
+
+.meta dt {
+  color: var(--muted);
+}
+
+.meta dd {
+  margin: 0;
+}
+
+.summary {
+  margin: 0 0 1rem;
+  color: var(--muted);
+}
+
+.task-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 0.7rem;
+}
+
+.task-item {
+  border: 1px solid #1f2937;
+  border-radius: 10px;
+  padding: 0.7rem;
+  background: #0b1220;
+}
+
+.task-title {
+  font-weight: 600;
+  margin-bottom: 0.2rem;
+}
+
+.task-progress,
+.task-meta {
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.inline-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--muted);
+}
