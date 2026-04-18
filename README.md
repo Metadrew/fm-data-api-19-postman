@@ -53,3 +53,7 @@ It combines:
   - Journal of Nutrition study (DOI): https://doi.org/10.1016/j.tjnut.2026.101426
 
 Open the HTML file in a browser, enter height, weight, and waist circumference, and click **Calculate**.
+### Preview
+
+![BMI + WHtR calculator preview](assets/bmi_whtr_preview.svg)
+
