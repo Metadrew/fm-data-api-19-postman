@@ -39,3 +39,21 @@ The recommended way to install it is through [Developer.ft.com](https://develope
 ## Use the collection
 
 Don't forget to replace {options} variables by your required options.
+
+## BMI + WHtR calculator
+
+This repository now includes a standalone, user-friendly calculator at:
+
+- `bmi_whtr_calculator.html`
+
+It combines:
+- BMI (Body Mass Index)
+- WHtR (Waist-to-Height Ratio) categories linked to findings reported in:
+  - ScienceAlert article: https://www.sciencealert.com/a-simple-calculation-may-predict-high-blood-pressure-better-than-bmi-can
+  - Journal of Nutrition study (DOI): https://doi.org/10.1016/j.tjnut.2026.101426
+
+Open the HTML file in a browser, enter height, weight, and waist circumference, and click **Calculate**.
+### Preview
+
+![BMI + WHtR calculator preview](assets/bmi_whtr_preview.svg)
+

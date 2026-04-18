@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BMI + Waist-to-Height Risk Calculator</title>
+  <style>
+    :root {
+      --bg: #f6f8fb;
+      --card: #ffffff;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --border: #d1d5db;
+      --accent: #2563eb;
+      --ok: #15803d;
+      --warn: #b45309;
+      --risk: #b91c1c;
+    }
+    body {
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.45;
+    }
+    .container {
+      max-width: 920px;
+      margin: 2rem auto;
+      padding: 0 1rem;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.25rem;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+      margin-bottom: 1rem;
+    }
+    h1, h2, h3 {
+      margin-top: 0;
+    }
+    h1 {
+      font-size: 1.6rem;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 0.8rem;
+    }
+    label {
+      font-weight: 600;
+      font-size: 0.95rem;
+      display: block;
+      margin-bottom: 0.3rem;
+    }
+    input, select, button {
+      width: 100%;
+      padding: 0.58rem 0.7rem;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 0.98rem;
+      box-sizing: border-box;
+    }
+    button {
+      border: none;
+      background: var(--accent);
+      color: white;
+      font-weight: 700;
+      cursor: pointer;
+      margin-top: 0.5rem;
+    }
+    button:hover {
+      filter: brightness(0.95);
+    }
+    .muted {
+      color: var(--muted);
+    }
+    .result {
+      border-left: 4px solid var(--accent);
+      padding: 0.7rem 0.9rem;
+      background: #eff6ff;
+      border-radius: 8px;
+      margin-top: 0.75rem;
+    }
+    .ok { color: var(--ok); }
+    .warn { color: var(--warn); }
+    .risk { color: var(--risk); }
+    ul { margin: 0.4rem 0; padding-left: 1.2rem; }
+    .footnote { font-size: 0.86rem; }
+  </style>
+</head>
+<body>
+  <main class="container">
+    <section class="card">
+      <h1>BMI + Waist-to-Height (WHtR) Risk Calculator</h1>
+      <p class="muted">
+        This calculator includes standard BMI and the waist-to-height ratio (WHtR), based on research highlighted by ScienceAlert
+        and the supporting study in <em>The Journal of Nutrition</em> (DOI: 10.1016/j.tjnut.2026.101426).
+      </p>
+      <p class="muted">For adults and educational screening only — not a diagnosis.</p>
+    </section>
+
+    <section class="card">
+      <h2>Enter your measurements</h2>
+      <div class="grid">
+        <div>
+          <label for="sex">Sex</label>
+          <select id="sex">
+            <option value="male">Male</option>
+            <option value="female">Female</option>
+          </select>
+        </div>
+        <div>
+          <label for="unit">Units</label>
+          <select id="unit">
+            <option value="metric">Metric (cm, kg)</option>
+            <option value="imperial">US (in, lb)</option>
+          </select>
+        </div>
+        <div>
+          <label for="height">Height</label>
+          <input id="height" type="number" step="0.1" min="1" placeholder="e.g., 170" />
+        </div>
+        <div>
+          <label for="weight">Weight</label>
+          <input id="weight" type="number" step="0.1" min="1" placeholder="e.g., 70" />
+        </div>
+        <div>
+          <label for="waist">Waist circumference</label>
+          <input id="waist" type="number" step="0.1" min="1" placeholder="e.g., 82" />
+        </div>
+      </div>
+      <button id="calcBtn" type="button">Calculate</button>
+      <div id="result" class="result" hidden></div>
+    </section>
+
+    <section class="card">
+      <h3>How results are interpreted</h3>
+      <ul>
+        <li><strong>BMI categories (WHO)</strong>: Underweight &lt; 18.5, Healthy 18.5-24.9, Overweight 25.0-29.9, Obesity ≥ 30.</li>
+        <li><strong>WHtR cut points (research-linked)</strong>: 
+          <ul>
+            <li>Male: normal &lt; 0.50, high fat ≥ 0.50, excess fat ≥ 0.53</li>
+            <li>Female: normal &lt; 0.51, high fat ≥ 0.51, excess fat ≥ 0.54</li>
+          </ul>
+        </li>
+      </ul>
+      <p class="footnote muted">
+        The supporting NHANES-based study reported WHtR-assessed high/excess fat categories were more strongly associated
+        with hypertension than BMI categories.
+      </p>
+    </section>
+  </main>
+
+  <script>
+    const els = {
+      sex: document.getElementById('sex'),
+      unit: document.getElementById('unit'),
+      height: document.getElementById('height'),
+      weight: document.getElementById('weight'),
+      waist: document.getElementById('waist'),
+      btn: document.getElementById('calcBtn'),
+      result: document.getElementById('result')
+    };
+
+    const number = (v) => Number.parseFloat(v);
+
+    function toMetric(height, weight, waist, unit) {
+      if (unit === 'metric') return { heightCm: height, weightKg: weight, waistCm: waist };
+      return {
+        heightCm: height * 2.54,
+        weightKg: weight * 0.45359237,
+        waistCm: waist * 2.54
+      };
+    }
+
+    function bmiCategory(bmi) {
+      if (bmi < 18.5) return ['Underweight', 'warn'];
+      if (bmi < 25) return ['Healthy range', 'ok'];
+      if (bmi < 30) return ['Overweight', 'warn'];
+      return ['Obesity', 'risk'];
+    }
+
+    function whtrCategory(whtr, sex) {
+      const high = sex === 'male' ? 0.50 : 0.51;
+      const excess = sex === 'male' ? 0.53 : 0.54;
+      if (whtr >= excess) return ['Excess fat range', 'risk'];
+      if (whtr >= high) return ['High fat range', 'warn'];
+      return ['Normal fat range', 'ok'];
+    }
+
+    function guidance(bmiClass, whtrClass) {
+      if (whtrClass[0] === 'Excess fat range') {
+        return 'WHtR suggests a higher cardiometabolic risk profile. Consider discussing blood pressure screening with your clinician.';
+      }
+      if (whtrClass[0] === 'High fat range') {
+        return 'WHtR suggests increased adiposity risk. Lifestyle changes and routine blood pressure checks are advisable.';
+      }
+      if (bmiClass[0] !== 'Healthy range') {
+        return 'BMI is outside healthy range, but WHtR is normal. Body composition may vary; follow up with a clinician for individualized assessment.';
+      }
+      return 'Both BMI and WHtR are in lower-risk ranges. Maintain healthy habits and periodic re-checks.';
+    }
+
+    els.btn.addEventListener('click', () => {
+      const unit = els.unit.value;
+      const sex = els.sex.value;
+      const h = number(els.height.value);
+      const w = number(els.weight.value);
+      const wc = number(els.waist.value);
+
+      if (![h, w, wc].every((n) => Number.isFinite(n) && n > 0)) {
+        els.result.hidden = false;
+        els.result.innerHTML = '<span class="risk">Please enter valid positive numbers for height, weight, and waist.</span>';
+        return;
+      }
+
+      const { heightCm, weightKg, waistCm } = toMetric(h, w, wc, unit);
+      const heightM = heightCm / 100;
+      const bmi = weightKg / (heightM * heightM);
+      const whtr = waistCm / heightCm;
+
+      const bmiClass = bmiCategory(bmi);
+      const whtrClass = whtrCategory(whtr, sex);
+
+      els.result.hidden = false;
+      els.result.innerHTML = `
+        <strong>Your Results</strong>
+        <ul>
+          <li>BMI: <strong>${bmi.toFixed(1)}</strong> — <span class="${bmiClass[1]}">${bmiClass[0]}</span></li>
+          <li>WHtR: <strong>${whtr.toFixed(3)}</strong> — <span class="${whtrClass[1]}">${whtrClass[0]}</span></li>
+        </ul>
+        <p><strong>Interpretation:</strong> ${guidance(bmiClass, whtrClass)}</p>
+      `;
+    });
+  </script>
+</body>
+</html>

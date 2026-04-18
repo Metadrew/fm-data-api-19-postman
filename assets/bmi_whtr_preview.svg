@@ -1,0 +1,45 @@
+<svg width="1200" height="760" viewBox="0 0 1200 760" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="760" fill="#F6F8FB"/>
+  <rect x="140" y="52" width="920" height="110" rx="14" fill="white" stroke="#D1D5DB"/>
+  <text x="170" y="95" font-family="Inter,Arial,sans-serif" font-size="34" font-weight="700" fill="#1F2937">BMI + Waist-to-Height (WHtR) Risk Calculator</text>
+  <text x="170" y="127" font-family="Inter,Arial,sans-serif" font-size="19" fill="#6B7280">Educational screening tool combining BMI and WHtR thresholds.</text>
+
+  <rect x="140" y="182" width="920" height="310" rx="14" fill="white" stroke="#D1D5DB"/>
+  <text x="170" y="223" font-family="Inter,Arial,sans-serif" font-size="28" font-weight="600" fill="#1F2937">Enter your measurements</text>
+
+  <g font-family="Inter,Arial,sans-serif" font-size="16" font-weight="600" fill="#1F2937">
+    <text x="170" y="262">Sex</text>
+    <text x="400" y="262">Units</text>
+    <text x="630" y="262">Height</text>
+    <text x="860" y="262">Weight</text>
+    <text x="170" y="360">Waist circumference</text>
+  </g>
+
+  <g fill="white" stroke="#D1D5DB">
+    <rect x="170" y="274" width="200" height="50" rx="9"/>
+    <rect x="400" y="274" width="200" height="50" rx="9"/>
+    <rect x="630" y="274" width="200" height="50" rx="9"/>
+    <rect x="860" y="274" width="170" height="50" rx="9"/>
+    <rect x="170" y="372" width="270" height="50" rx="9"/>
+  </g>
+
+  <g font-family="Inter,Arial,sans-serif" font-size="17" fill="#6B7280">
+    <text x="189" y="307">Male</text>
+    <text x="419" y="307">Metric (cm, kg)</text>
+    <text x="649" y="307">170</text>
+    <text x="879" y="307">70</text>
+    <text x="189" y="405">82</text>
+  </g>
+
+  <rect x="170" y="438" width="200" height="42" rx="9" fill="#2563EB"/>
+  <text x="222" y="465" font-family="Inter,Arial,sans-serif" font-size="18" font-weight="700" fill="white">Calculate</text>
+
+  <rect x="140" y="520" width="920" height="188" rx="14" fill="white" stroke="#D1D5DB"/>
+  <rect x="170" y="555" width="860" height="123" rx="10" fill="#EFF6FF" stroke="#BFDBFE"/>
+  <rect x="170" y="555" width="6" height="123" fill="#2563EB"/>
+
+  <text x="190" y="587" font-family="Inter,Arial,sans-serif" font-size="24" font-weight="700" fill="#1F2937">Your Results</text>
+  <text x="190" y="620" font-family="Inter,Arial,sans-serif" font-size="19" fill="#1F2937">BMI: 24.2 — Healthy range</text>
+  <text x="500" y="620" font-family="Inter,Arial,sans-serif" font-size="19" fill="#1F2937">WHtR: 0.482 — Normal fat range</text>
+  <text x="190" y="652" font-family="Inter,Arial,sans-serif" font-size="17" fill="#374151">Interpretation: Both BMI and WHtR are in lower-risk ranges.</text>
+</svg>
